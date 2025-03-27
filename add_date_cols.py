@@ -1,6 +1,6 @@
 from pyspark.sql.functions import expr
 
-# Define end-of-quarter dates
+# List of end-of-quarter dates
 end_of_quarters = [
     '2025-03-31',
     '2025-06-30',
@@ -12,14 +12,14 @@ end_of_quarters = [
     '2026-12-31'
 ]
 
-# Assume df has columns: ID (string), Tags (array<string>), Dates (array<date>)
-# For each end-of-quarter date, add a column: required_by_<date>
+# Iterate and add a column for each date
 for date_str in end_of_quarters:
-    column_name = f"required_by_{date_str}"
-    df = df.withColumn(
-        column_name,
-        expr(f"aggregate(Dates, true, (acc, x) -> acc and x <= date('{date_str}'))")
-    )
+    col_name = f"required_by_{date_str.replace('-', '_')}"  # Replace - with _ to make column name safe
+    condition_expr = f"""
+        CASE
+            WHEN Dates IS NULL OR size(Dates) = 0 THEN false
+            ELSE aggregate(Dates, true, (acc, x) -> acc AND x <= date('{date_str}'))
+        END
+    """
+    df = df.withColumn(col_name, expr(condition_expr))
 
-# Show the results
-df.show(truncate=False)
